@@ -1,0 +1,60 @@
+---
+title: "Data Viz Challenge"
+author: "Brianna Alston"
+date: "10/6/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Reading in the data
+
+```{r read}
+library(tidyverse)
+data <- read_csv("Clean PWHPA Secret Dream Gap Tour - SportLogiq - PWHPA Secret Dream Gap Tour.csv")
+
+d_players <- data %>% filter(position=="D")
+f_players <- data %>% filter(position=="F")
+
+wins <- data %>% group_by(team) %>% filter(result=="W") %>% summarise(n_wins = n_distinct(gameid))
+games <- data %>% group_by(team) %>% summarise(tot_games = n_distinct(gameid))
+
+wins %>% left_join(games) %>% mutate(win_pct = n_wins/tot_games)
+
+teams_shots <- data %>% group_by(team,gameid) %>% summarise(shots_against = sum(shots_against), shot_attempts = sum(shot_attempts))
+
+ggplot(teams_shots, aes(x=shots_against,y=shot_attempts, color=team)) + geom_point()
+
+ggplot(teams_shots, aes())
+```
+
+Comparing Top 5 Forward Position (Goal to Shot Attempt Ratio) Players from the Best Team (by win percentage) and Worst Team
+
+```{r compTop}
+top_F_min <- f_players %>% filter(team=="MIN") %>% group_by(team,player) %>% summarise(goals = sum(goals), shot_attempts = sum(shot_attempts)) %>% mutate(shot_ratio = format(round(goals/shot_attempts,2),nsmall=2)) %>% filter(goals != 0) %>% ungroup() %>% group_by(team) %>% mutate(r = rank(desc(shot_ratio))) %>% arrange(desc(r)) %>% head(n=5) %>% arrange(desc(shot_attempts))
+
+top_F_nh <- f_players %>% filter(team=="NH") %>% group_by(team,player) %>% summarise(goals = sum(goals), shot_attempts = sum(shot_attempts)) %>% mutate(shot_ratio = format(round(goals/shot_attempts,2),nsmall=2)) %>% filter(goals != 0) %>% ungroup() %>% group_by(team) %>% mutate(r = rank(desc(shot_ratio)))  %>% arrange(desc(r)) %>% head(n=5) %>% arrange(desc(shot_attempts))
+
+
+```
+
+Graphing
+
+```{r graphTop}
+library(gridExtra)
+
+p1<- ggplot(top_F_min, aes(x=reorder(player,shot_attempts), y=shot_attempts)) + geom_col(fill="#cbd433") + geom_col(data=top_F_min, aes(x=player, y=goals), fill="#0a0f30") + geom_label(data=top_F_min,mapping = aes(label=shot_ratio),fill="white",hjust=-.75)  + scale_y_reverse() + coord_flip() +   theme(axis.title.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        panel.background = element_blank()) + xlab(NULL) +ylab(NULL)
+
+p2<-ggplot(top_F_nh, aes(x=reorder(player,shot_attempts), y=shot_attempts)) + geom_col(fill="#e21f19") + geom_col(data=top_F_nh, aes(x=player, y=goals), fill="#141517") + coord_flip() + theme(axis.text.x=element_text(hjust=-1.5),axis.ticks.y=element_blank(),panel.background = element_blank()) + geom_label(data=top_F_nh,mapping = aes(label=shot_ratio), fill="white",hjust=.75) + xlab(NULL) + ylab(NULL) + scale_x_discrete(position = "top") 
+
+grid.arrange(p1,p2,ncol=2,nrow=1,top="Comparing Top Forward Players for Minnesota and New Hampshire by Goal Ratio \n Goal Ratio = Goals / Shots Attempted",bottom="Goals/Shot Attempts \n Data Viz by Brianna Alston ~ Data from PWHPA and Sportlogiq")
+```
+
+
+
+
+
